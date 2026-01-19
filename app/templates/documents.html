@@ -29,10 +29,14 @@
 
 <!-- Documents Table -->
 <div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Documents</h5>
+        <input type="text" id="documentsSearch" class="form-control form-control-sm" style="max-width: 250px;" placeholder="Filter by fund or ticker...">
+    </div>
     <div class="card-body">
         {% if documents %}
         <div class="table-responsive">
-            <table class="table table-hover mb-0">
+            <table id="documentsTable" class="table table-hover mb-0">
                 <thead>
                     <tr>
                         <th>Filed Date</th>
@@ -45,7 +49,7 @@
                 </thead>
                 <tbody>
                     {% for doc in documents %}
-                    <tr>
+                    <tr data-fund="{{ (doc.fund.name or '')|lower }}" data-ticker="{{ (doc.fund.ticker or '')|lower }}">
                         <td>{{ doc.filed_at.strftime('%Y-%m-%d') }}</td>
                         <td>{{ doc.fund.name or doc.fund.cik }}</td>
                         <td><span class="badge bg-secondary">{{ doc.form_type }}</span></td>
@@ -101,4 +105,32 @@
         {% endif %}
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Table filtering functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const input = document.getElementById('documentsSearch');
+    const table = document.getElementById('documentsTable');
+
+    if (!input || !table) return;
+
+    input.addEventListener('input', function() {
+        const filter = this.value.toLowerCase().trim();
+        const rows = table.querySelectorAll('tbody tr');
+
+        rows.forEach(function(row) {
+            const fund = row.dataset.fund || '';
+            const ticker = row.dataset.ticker || '';
+
+            if (filter === '' || fund.includes(filter) || ticker.includes(filter)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+});
+</script>
 {% endblock %}
