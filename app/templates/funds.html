@@ -34,7 +34,7 @@
         <h5 class="mb-0">Monitored Funds</h5>
     </div>
     <div class="card-body">
-        {% if funds %}
+        {% if funds_with_latest %}
         <div class="table-responsive">
             <table class="table table-hover mb-0">
                 <thead>
@@ -42,17 +42,29 @@
                         <th>CIK</th>
                         <th>Name</th>
                         <th>Ticker</th>
+                        <th>Last Statement Filed</th>
+                        <th>Type</th>
                         <th>Status</th>
                         <th>Added</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for fund in funds %}
+                    {% for item in funds_with_latest %}
+                    {% set fund = item.fund %}
+                    {% set latest_doc = item.latest_document %}
                     <tr class="{{ 'table-secondary' if not fund.is_active else '' }}">
                         <td><code>{{ fund.cik }}</code></td>
                         <td>{{ fund.name or 'Unknown' }}</td>
                         <td>{{ fund.ticker or '-' }}</td>
+                        <td>{{ latest_doc.filed_at.strftime('%Y-%m-%d') if latest_doc else '-' }}</td>
+                        <td>
+                            {% if latest_doc %}
+                            <span class="badge bg-secondary">{{ latest_doc.form_type }}</span>
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
                         <td>
                             <span class="badge bg-{{ 'success' if fund.is_active else 'secondary' }}">
                                 {{ 'Active' if fund.is_active else 'Inactive' }}

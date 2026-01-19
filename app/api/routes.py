@@ -48,11 +48,21 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
 async def list_funds(request: Request, db: Session = Depends(get_db)):
     """Fund management page"""
     fund_service = FundService(db)
+    document_service = DocumentService(db)
     funds = fund_service.get_all_funds()
+
+    # Get latest document for each fund
+    funds_with_latest = []
+    for fund in funds:
+        latest_doc = document_service.get_latest_document_for_fund(fund.id)
+        funds_with_latest.append({
+            "fund": fund,
+            "latest_document": latest_doc
+        })
 
     return templates.TemplateResponse("funds.html", {
         "request": request,
-        "funds": funds,
+        "funds_with_latest": funds_with_latest,
         "error": request.query_params.get("error"),
         "success": request.query_params.get("success"),
     })

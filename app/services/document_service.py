@@ -87,6 +87,15 @@ class DocumentService:
             .all()
         )
 
+    def get_latest_document_for_fund(self, fund_id: int) -> Optional[Document]:
+        """Get the most recently filed document for a specific fund"""
+        return (
+            self.db.query(Document)
+            .filter(Document.fund_id == fund_id)
+            .order_by(Document.filed_at.desc())
+            .first()
+        )
+
     async def scan_all_funds(self, save_path: Optional[str] = None) -> ScanResult:
         """Scan all active funds for new documents"""
         result = ScanResult()
