@@ -29,5 +29,6 @@ data/documents/
 .DS_Store
 Thumbs.db
 
-# Claude
-.claude/
+# Claude (exclude settings but keep docs)
+.claude/*
+!.claude/docs/
