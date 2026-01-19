@@ -268,6 +268,47 @@ async def job_history(request: Request, db: Session = Depends(get_db)):
     })
 
 
+# ============ File Browser ============
+
+@router.get("/api/browse")
+async def browse_directory(path: str = None):
+    """Browse directories for folder picker"""
+    import os
+
+    # Default to user's home directory if no path provided
+    if not path:
+        path = str(Path.home())
+
+    path = Path(path)
+
+    # Validate path exists and is a directory
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Path does not exist")
+    if not path.is_dir():
+        raise HTTPException(status_code=400, detail="Path is not a directory")
+
+    # Get parent directory
+    parent = str(path.parent) if path.parent != path else None
+
+    # List directories only (not files)
+    directories = []
+    try:
+        for item in sorted(path.iterdir()):
+            if item.is_dir() and not item.name.startswith('.'):
+                directories.append({
+                    "name": item.name,
+                    "path": str(item)
+                })
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="Permission denied")
+
+    return {
+        "current_path": str(path),
+        "parent": parent,
+        "directories": directories
+    }
+
+
 # ============ Health Check ============
 
 @router.get("/api/health")

@@ -21,8 +21,13 @@
         <div class="card-body">
             <div class="mb-3">
                 <label for="save_location" class="form-label">Save Location</label>
-                <input type="text" class="form-control" id="save_location" name="save_location"
-                       value="{{ save_location }}" required>
+                <div class="input-group">
+                    <input type="text" class="form-control" id="save_location" name="save_location"
+                           value="{{ save_location }}" required>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#folderBrowserModal">
+                        Browse...
+                    </button>
+                </div>
                 <div class="form-text">
                     Absolute or relative path where downloaded documents will be saved.
                     Subdirectories will be created for each fund.
@@ -82,10 +87,151 @@
         </div>
     </div>
 </div>
+
+<!-- Folder Browser Modal -->
+<div class="modal fade" id="folderBrowserModal" tabindex="-1" aria-labelledby="folderBrowserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="folderBrowserModalLabel">Select Folder</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Current Path -->
+                <div class="mb-3">
+                    <div class="input-group">
+                        <span class="input-group-text">Path:</span>
+                        <input type="text" class="form-control" id="currentPathInput" readonly>
+                        <button type="button" class="btn btn-outline-secondary" id="goToPathBtn" title="Go to path">
+                            Go
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Navigation -->
+                <div class="mb-3">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="parentDirBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+                            <path fill-rule="evenodd" d="M15 8a.5.5 0 0 0-.5-.5H2.707l3.147-3.146a.5.5 0 1 0-.708-.708l-4 4a.5.5 0 0 0 0 .708l4 4a.5.5 0 0 0 .708-.708L2.707 8.5H14.5A.5.5 0 0 0 15 8z"/>
+                        </svg>
+                        Up to Parent
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="homeDirBtn">
+                        Home
+                    </button>
+                </div>
+
+                <!-- Directory Listing -->
+                <div class="border rounded" style="max-height: 400px; overflow-y: auto;">
+                    <div class="list-group list-group-flush" id="directoryList">
+                        <div class="list-group-item text-muted">Loading...</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="selectFolderBtn">Select This Folder</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+// Folder Browser functionality
+let currentPath = '';
+
+async function loadDirectory(path = null) {
+    const directoryList = document.getElementById('directoryList');
+    directoryList.innerHTML = '<div class="list-group-item text-muted">Loading...</div>';
+
+    try {
+        const url = path ? `/api/browse?path=${encodeURIComponent(path)}` : '/api/browse';
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to load directory');
+        }
+
+        const data = await response.json();
+        currentPath = data.current_path;
+
+        // Update path input
+        document.getElementById('currentPathInput').value = currentPath;
+
+        // Enable/disable parent button
+        document.getElementById('parentDirBtn').disabled = !data.parent;
+        document.getElementById('parentDirBtn').dataset.parent = data.parent || '';
+
+        // Build directory listing
+        if (data.directories.length === 0) {
+            directoryList.innerHTML = '<div class="list-group-item text-muted">No subdirectories</div>';
+        } else {
+            directoryList.innerHTML = data.directories.map(dir => `
+                <button type="button" class="list-group-item list-group-item-action d-flex align-items-center"
+                        onclick="loadDirectory('${dir.path.replace(/'/g, "\\'")}')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="me-2" viewBox="0 0 16 16">
+                        <path d="M.54 3.87.5 3a2 2 0 0 1 2-2h3.672a2 2 0 0 1 1.414.586l.828.828A2 2 0 0 0 9.828 3H14a2 2 0 0 1 2 2v1.08a2.2 2.2 0 0 0-.272-.08H.272A2.2 2.2 0 0 0 0 6.08V6a2 2 0 0 1 .11-.52l.44-1.61Z"/>
+                        <path d="M14 4H9.828a1 1 0 0 1-.707-.293L8.293 2.88A2 2 0 0 0 6.879 2H2.5A1.5 1.5 0 0 0 1 3.5v.5h13v-.5A.5.5 0 0 0 14 4ZM.19 6.5a.5.5 0 0 0-.492.575l.693 4.158A2 2 0 0 0 2.36 13h11.28a2 2 0 0 0 1.969-1.667l.693-4.158a.5.5 0 0 0-.492-.575H.19Z"/>
+                    </svg>
+                    ${dir.name}
+                </button>
+            `).join('');
+        }
+    } catch (error) {
+        directoryList.innerHTML = `<div class="list-group-item text-danger">Error: ${error.message}</div>`;
+    }
+}
+
+// Initialize modal when shown
+document.getElementById('folderBrowserModal').addEventListener('shown.bs.modal', function () {
+    // Start from current save location or home
+    const currentSaveLocation = document.getElementById('save_location').value;
+    loadDirectory(currentSaveLocation || null);
+});
+
+// Parent directory button
+document.getElementById('parentDirBtn').addEventListener('click', function() {
+    const parent = this.dataset.parent;
+    if (parent) {
+        loadDirectory(parent);
+    }
+});
+
+// Home directory button
+document.getElementById('homeDirBtn').addEventListener('click', function() {
+    loadDirectory(null);
+});
+
+// Go to path button
+document.getElementById('goToPathBtn').addEventListener('click', function() {
+    const path = document.getElementById('currentPathInput').value;
+    if (path) {
+        loadDirectory(path);
+    }
+});
+
+// Allow editing path input and pressing Enter
+document.getElementById('currentPathInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        loadDirectory(this.value);
+    }
+});
+
+// Remove readonly when clicking on path input to allow manual entry
+document.getElementById('currentPathInput').addEventListener('click', function() {
+    this.removeAttribute('readonly');
+});
+
+// Select folder button
+document.getElementById('selectFolderBtn').addEventListener('click', function() {
+    document.getElementById('save_location').value = currentPath;
+    bootstrap.Modal.getInstance(document.getElementById('folderBrowserModal')).hide();
+});
+
 // Check API health on page load
 fetch('/api/health')
     .then(response => response.json())
