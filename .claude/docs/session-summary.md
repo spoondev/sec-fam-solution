@@ -33,6 +33,8 @@ Built a complete solution for retrieving SEC filings (N-CSR and N-CSRS forms) fr
 
 ### Additional Features Added
 - Folder browser modal for selecting save location via file system navigation
+- Dynamic search/filter bars on dashboard, documents, and funds pages
+- Last Statement Filed and Type columns on the Funds management page
 
 ---
 
@@ -155,6 +157,11 @@ DEBUG=false
 ### Commits
 1. **92c402d** - Initial commit: SEC Filing Manager
 2. **ba6dd67** - Add folder browser to settings page
+3. **761816f** - Add session summary documentation
+4. **155773e** - Add search filters to dashboard tables
+5. **abda696** - Add search filter to documents page
+6. **e626070** - Add last statement and type columns to funds page
+7. **92bc2b5** - Add search filter to funds management page
 
 ---
 
@@ -216,3 +223,11 @@ python-dateutil>=2.8.2
 - API key is for free tier of sec-api.io
 - Application tested and confirmed working
 - Folder browser feature added as enhancement to settings page
+
+### Session 2 (2026-01-19)
+- Added dynamic search/filter functionality to all main tables:
+  - Dashboard: Fund Statistics and Recent Documents tables filter by fund name or ticker
+  - Documents page: Filter by fund name or ticker
+  - Funds page: Filter by name, ticker, or CIK
+- Added "Last Statement Filed" and "Type" columns to the Monitored Funds table
+- All filters work client-side with real-time filtering as user types
