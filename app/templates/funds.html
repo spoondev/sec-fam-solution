@@ -30,13 +30,14 @@
 
 <!-- Funds Table -->
 <div class="card">
-    <div class="card-header">
+    <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0">Monitored Funds</h5>
+        <input type="text" id="fundsSearch" class="form-control form-control-sm" style="max-width: 250px;" placeholder="Filter by name, ticker or CIK...">
     </div>
     <div class="card-body">
         {% if funds_with_latest %}
         <div class="table-responsive">
-            <table class="table table-hover mb-0">
+            <table id="fundsTable" class="table table-hover mb-0">
                 <thead>
                     <tr>
                         <th>CIK</th>
@@ -53,7 +54,7 @@
                     {% for item in funds_with_latest %}
                     {% set fund = item.fund %}
                     {% set latest_doc = item.latest_document %}
-                    <tr class="{{ 'table-secondary' if not fund.is_active else '' }}">
+                    <tr class="{{ 'table-secondary' if not fund.is_active else '' }}" data-cik="{{ fund.cik|lower }}" data-name="{{ (fund.name or '')|lower }}" data-ticker="{{ (fund.ticker or '')|lower }}">
                         <td><code>{{ fund.cik }}</code></td>
                         <td>{{ fund.name or 'Unknown' }}</td>
                         <td>{{ fund.ticker or '-' }}</td>
@@ -92,4 +93,32 @@
         {% endif %}
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const input = document.getElementById('fundsSearch');
+    const table = document.getElementById('fundsTable');
+
+    if (!input || !table) return;
+
+    input.addEventListener('input', function() {
+        const filter = this.value.toLowerCase().trim();
+        const rows = table.querySelectorAll('tbody tr');
+
+        rows.forEach(function(row) {
+            const cik = row.dataset.cik || '';
+            const name = row.dataset.name || '';
+            const ticker = row.dataset.ticker || '';
+
+            if (filter === '' || cik.includes(filter) || name.includes(filter) || ticker.includes(filter)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+});
+</script>
 {% endblock %}
