@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - SEC Filing Manager{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Settings</h2>
+
+{% if saved %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    Settings saved successfully.
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<form action="/settings" method="post">
+    <!-- Document Storage -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Document Storage</h5>
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <label for="save_location" class="form-label">Save Location</label>
+                <input type="text" class="form-control" id="save_location" name="save_location"
+                       value="{{ save_location }}" required>
+                <div class="form-text">
+                    Absolute or relative path where downloaded documents will be saved.
+                    Subdirectories will be created for each fund.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Schedule Settings -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Scan Schedule</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label for="schedule_day" class="form-label">Day of Week</label>
+                    <select class="form-select" id="schedule_day" name="schedule_day">
+                        {% for value, name in days_of_week %}
+                        <option value="{{ value }}" {% if schedule_day == value %}selected{% endif %}>{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="schedule_hour" class="form-label">Time (Hour)</label>
+                    <select class="form-select" id="schedule_hour" name="schedule_hour">
+                        {% for h in range(24) %}
+                        <option value="{{ h }}" {% if schedule_hour == h %}selected{% endif %}>{{ '%02d:00'|format(h) }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Next Scheduled Run</label>
+                    <p class="form-control-plaintext">
+                        {{ next_scan.strftime('%Y-%m-%d %H:%M') if next_scan else 'Not scheduled' }}
+                    </p>
+                </div>
+            </div>
+            <div class="form-text mt-2">
+                The system will automatically scan for new documents at the scheduled time.
+                You can also trigger a manual scan from the sidebar.
+            </div>
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Save Settings</button>
+</form>
+
+<!-- API Status -->
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="mb-0">API Status</h5>
+    </div>
+    <div class="card-body">
+        <div id="api-status">
+            <span class="text-muted">Checking API connection...</span>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Check API health on page load
+fetch('/api/health')
+    .then(response => response.json())
+    .then(data => {
+        const statusDiv = document.getElementById('api-status');
+        if (data.api_connection) {
+            statusDiv.innerHTML = '<span class="badge bg-success">Connected</span> SEC API is reachable';
+        } else {
+            statusDiv.innerHTML = '<span class="badge bg-danger">Disconnected</span> Cannot reach SEC API. Check your API key.';
+        }
+    })
+    .catch(error => {
+        document.getElementById('api-status').innerHTML =
+            '<span class="badge bg-warning">Unknown</span> Could not check API status';
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - SEC Filing Manager{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Dashboard</h2>
+
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <h6 class="card-title text-muted mb-2">Active Funds</h6>
+                <h2 class="mb-0">{{ total_funds }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <h6 class="card-title text-muted mb-2">Total Documents</h6>
+                <h2 class="mb-0">{{ total_documents }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <h6 class="card-title text-muted mb-2">Last Scan</h6>
+                {% if last_job %}
+                    <p class="mb-1">
+                        {{ last_job.completed_at.strftime('%Y-%m-%d %H:%M') if last_job.completed_at else 'Running...' }}
+                    </p>
+                    <span class="badge bg-{{ 'success' if last_job.status == 'success' else 'warning' if last_job.status == 'partial' else 'info' if last_job.status == 'running' else 'danger' }}">
+                        {{ last_job.status }}
+                    </span>
+                {% else %}
+                    <p class="mb-0 text-muted">Never</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <h6 class="card-title text-muted mb-2">Next Scheduled</h6>
+                <p class="mb-0">{{ next_scan.strftime('%Y-%m-%d %H:%M') if next_scan else 'Not scheduled' }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if is_scanning %}
+<div class="alert alert-info">
+    <strong>Scan in progress...</strong> The system is currently scanning for new documents.
+</div>
+{% endif %}
+
+<!-- Fund Statistics -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Fund Statistics</h5>
+    </div>
+    <div class="card-body">
+        {% if fund_stats %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Fund</th>
+                        <th>Ticker</th>
+                        <th>Documents</th>
+                        <th>Latest Filing</th>
+                        <th>Avg. Frequency</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stat in fund_stats %}
+                    <tr>
+                        <td>{{ stat.name or 'CIK: ' + stat.cik }}</td>
+                        <td>{{ stat.ticker or '-' }}</td>
+                        <td>{{ stat.document_count }}</td>
+                        <td>{{ stat.latest_filing.strftime('%Y-%m-%d') if stat.latest_filing else '-' }}</td>
+                        <td>{% if stat.avg_frequency_days %}{{ stat.avg_frequency_days }} days{% else %}-{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">No funds added yet. <a href="/funds">Add a fund</a> to get started.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Recent Documents -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Recent Documents</h5>
+        <a href="/documents" class="btn btn-sm btn-outline-primary">View All</a>
+    </div>
+    <div class="card-body">
+        {% if recent_documents %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Filed Date</th>
+                        <th>Fund</th>
+                        <th>Type</th>
+                        <th>File</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for doc in recent_documents %}
+                    <tr>
+                        <td>{{ doc.filed_at.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ doc.fund.name or doc.fund.cik }}</td>
+                        <td><span class="badge bg-secondary">{{ doc.form_type }}</span></td>
+                        <td>
+                            {% if doc.local_filename %}
+                            <span title="{{ doc.local_path }}">{{ doc.local_filename[:40] }}{% if doc.local_filename|length > 40 %}...{% endif %}</span>
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">No documents retrieved yet. Run a scan to download documents.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if is_scanning %}
+<script>
+// Auto-refresh page while scanning
+setTimeout(function() {
+    location.reload();
+}, 10000);
+</script>
+{% endif %}
+{% endblock %}

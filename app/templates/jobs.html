@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Job History - SEC Filing Manager{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Job History</h2>
+
+<div class="card">
+    <div class="card-body">
+        {% if jobs %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Type</th>
+                        <th>Started</th>
+                        <th>Completed</th>
+                        <th>Status</th>
+                        <th>Funds</th>
+                        <th>Found</th>
+                        <th>Downloaded</th>
+                        <th>Error</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for job in jobs %}
+                    <tr>
+                        <td>{{ job.id }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'primary' if job.job_type == 'manual_scan' else 'info' }}">
+                                {{ job.job_type }}
+                            </span>
+                        </td>
+                        <td>{{ job.started_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                        <td>{{ job.completed_at.strftime('%Y-%m-%d %H:%M:%S') if job.completed_at else '-' }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if job.status == 'success' else 'warning' if job.status == 'partial' else 'info' if job.status == 'running' else 'danger' }}">
+                                {{ job.status }}
+                            </span>
+                        </td>
+                        <td>{{ job.funds_scanned }}</td>
+                        <td>{{ job.documents_found }}</td>
+                        <td>{{ job.documents_downloaded }}</td>
+                        <td>
+                            {% if job.error_message %}
+                            <span class="text-danger" title="{{ job.error_message }}">
+                                {{ job.error_message[:50] }}{% if job.error_message|length > 50 %}...{% endif %}
+                            </span>
+                            {% else %}
+                            -
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">No job history yet. Run a scan to see job results here.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

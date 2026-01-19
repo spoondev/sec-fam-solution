@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Funds - SEC Filing Manager{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Fund Management</h2>
+
+<!-- Add Fund Form -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5 class="mb-0">Add New Fund</h5>
+    </div>
+    <div class="card-body">
+        <form action="/funds" method="post" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label for="cik" class="form-label">CIK (Central Index Key)</label>
+                <input type="text" class="form-control" id="cik" name="cik"
+                       placeholder="e.g., 320193 or 0000320193" required>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-primary">Add Fund</button>
+            </div>
+        </form>
+        <small class="text-muted mt-2 d-block">
+            Enter the SEC Central Index Key (CIK) for the fund. Leading zeros will be removed automatically.
+            You can find CIK numbers on the <a href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany" target="_blank">SEC EDGAR</a> website.
+        </small>
+    </div>
+</div>
+
+<!-- Funds Table -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">Monitored Funds</h5>
+    </div>
+    <div class="card-body">
+        {% if funds %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>CIK</th>
+                        <th>Name</th>
+                        <th>Ticker</th>
+                        <th>Status</th>
+                        <th>Added</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for fund in funds %}
+                    <tr class="{{ 'table-secondary' if not fund.is_active else '' }}">
+                        <td><code>{{ fund.cik }}</code></td>
+                        <td>{{ fund.name or 'Unknown' }}</td>
+                        <td>{{ fund.ticker or '-' }}</td>
+                        <td>
+                            <span class="badge bg-{{ 'success' if fund.is_active else 'secondary' }}">
+                                {{ 'Active' if fund.is_active else 'Inactive' }}
+                            </span>
+                        </td>
+                        <td>{{ fund.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td>
+                            <form action="/funds/{{ fund.id }}/toggle" method="post" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-outline-secondary">
+                                    {{ 'Deactivate' if fund.is_active else 'Activate' }}
+                                </button>
+                            </form>
+                            <form action="/funds/{{ fund.id }}/delete" method="post" class="d-inline"
+                                  onsubmit="return confirm('Are you sure you want to delete this fund? This will also delete all associated document records.')">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted mb-0">No funds added yet. Use the form above to add funds by their CIK.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
