@@ -11,7 +11,9 @@
         <h5 class="mb-0">Add New Fund</h5>
     </div>
     <div class="card-body">
-        <form action="/funds" method="post" class="row g-3 align-items-end">
+        <!-- Single CIK Input -->
+        <h6 class="text-muted mb-3">Add Single Fund</h6>
+        <form action="/funds" method="post" class="row g-3 align-items-end mb-4">
             <div class="col-md-4">
                 <label for="cik" class="form-label">CIK (Central Index Key)</label>
                 <input type="text" class="form-control" id="cik" name="cik"
@@ -21,8 +23,62 @@
                 <button type="submit" class="btn btn-primary">Add Fund</button>
             </div>
         </form>
+
+        <hr>
+
+        <!-- Bulk Upload -->
+        <h6 class="text-muted mb-3">Bulk Upload from CSV</h6>
+        <form action="/funds/bulk" method="post" enctype="multipart/form-data" class="row g-3 align-items-end">
+            <div class="col-md-6">
+                <label for="csv_file" class="form-label">CSV File</label>
+                <input type="file" class="form-control" id="csv_file" name="csv_file" accept=".csv" required>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-outline-primary">Upload CSV</button>
+            </div>
+        </form>
         <small class="text-muted mt-2 d-block">
-            Enter the SEC Central Index Key (CIK) for the fund. Leading zeros will be removed automatically.
+            Upload a CSV file with a header row <code>CIK</code> and one CIK code per row.
+            Leading zeros will be removed automatically. Duplicate CIKs will be skipped.
+        </small>
+
+        <!-- Bulk Upload Results -->
+        {% if bulk_result %}
+        <div class="mt-4">
+            <h6>Bulk Upload Results</h6>
+            {% if bulk_result.added > 0 %}
+            <div class="alert alert-success py-2">
+                <strong>{{ bulk_result.added }}</strong> fund(s) added successfully.
+            </div>
+            {% endif %}
+            {% if bulk_result.skipped_duplicates %}
+            <div class="alert alert-warning py-2">
+                <strong>{{ bulk_result.skipped_duplicates|length }}</strong> duplicate(s) skipped:
+                <code>{{ bulk_result.skipped_duplicates|join(', ') }}</code>
+            </div>
+            {% endif %}
+            {% if bulk_result.invalid_ciks %}
+            <div class="alert alert-danger py-2">
+                <strong>{{ bulk_result.invalid_ciks|length }}</strong> invalid CIK(s) - must be numeric only:
+                <code>{{ bulk_result.invalid_ciks|join(', ') }}</code>
+            </div>
+            {% endif %}
+            {% if bulk_result.errors %}
+            <div class="alert alert-danger py-2">
+                <strong>Errors:</strong>
+                <ul class="mb-0 mt-1">
+                    {% for err in bulk_result.errors %}
+                    <li>CIK {{ err.cik }}: {{ err.message }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <hr class="mt-4">
+
+        <small class="text-muted d-block">
             You can find CIK numbers on the <a href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany" target="_blank">SEC EDGAR</a> website.
         </small>
     </div>

@@ -1,11 +1,13 @@
 """FastAPI route definitions"""
 
-from fastapi import APIRouter, Depends, Request, Form, HTTPException, BackgroundTasks
+from fastapi import APIRouter, Depends, Request, Form, HTTPException, BackgroundTasks, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from pathlib import Path
 import logging
+import csv
+import io
 
 from app.database import get_db
 from app.services.fund_service import FundService
@@ -96,6 +98,127 @@ async def add_fund(
             url=f"/funds?error=Failed to add fund: {str(e)}",
             status_code=303
         )
+
+
+@router.post("/funds/bulk", response_class=HTMLResponse)
+async def bulk_add_funds(
+    request: Request,
+    csv_file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
+    """Bulk add funds from CSV file"""
+    fund_service = FundService(db)
+    document_service = DocumentService(db)
+
+    # Result tracking
+    result = {
+        "added": 0,
+        "skipped_duplicates": [],
+        "invalid_ciks": [],
+        "errors": []
+    }
+
+    try:
+        # Read and decode CSV content
+        content = await csv_file.read()
+        try:
+            text_content = content.decode('utf-8')
+        except UnicodeDecodeError:
+            text_content = content.decode('latin-1')
+
+        # Parse CSV
+        csv_reader = csv.DictReader(io.StringIO(text_content))
+
+        # Check for CIK column
+        if not csv_reader.fieldnames or 'CIK' not in [f.upper() for f in csv_reader.fieldnames]:
+            # Re-render the page with error
+            funds = fund_service.get_all_funds()
+            funds_with_latest = []
+            for fund in funds:
+                latest_doc = document_service.get_latest_document_for_fund(fund.id)
+                funds_with_latest.append({"fund": fund, "latest_document": latest_doc})
+
+            return templates.TemplateResponse("funds.html", {
+                "request": request,
+                "funds_with_latest": funds_with_latest,
+                "error": "CSV file must have a 'CIK' column header",
+            })
+
+        # Find the actual CIK column name (case-insensitive)
+        cik_column = next(f for f in csv_reader.fieldnames if f.upper() == 'CIK')
+
+        # Get existing CIKs for duplicate checking
+        existing_ciks = {fund.cik for fund in fund_service.get_all_funds()}
+
+        # Process each row
+        ciks_to_add = []
+        for row in csv_reader:
+            cik_raw = row.get(cik_column, '').strip()
+
+            if not cik_raw:
+                continue
+
+            # Validate: CIK must be numeric only
+            if not cik_raw.replace('0', '').isdigit() and cik_raw != '0':
+                # Check if it's actually numeric (could be all zeros or have leading zeros)
+                if not cik_raw.isdigit():
+                    result["invalid_ciks"].append(cik_raw)
+                    continue
+
+            # Format: strip leading zeros
+            cik_clean = cik_raw.lstrip("0") or "0"
+
+            # Check for duplicates against existing funds
+            if cik_clean in existing_ciks:
+                result["skipped_duplicates"].append(cik_clean)
+                continue
+
+            # Check for duplicates within the CSV itself
+            if cik_clean in [c for c, _ in ciks_to_add]:
+                continue
+
+            ciks_to_add.append((cik_clean, cik_raw))
+
+        # Add valid CIKs
+        for cik_clean, cik_raw in ciks_to_add:
+            try:
+                await fund_service.add_fund(cik_clean)
+                result["added"] += 1
+            except ValueError as e:
+                # Already exists (race condition) or other validation error
+                if "already exists" in str(e).lower():
+                    result["skipped_duplicates"].append(cik_clean)
+                else:
+                    result["errors"].append({"cik": cik_clean, "message": str(e)})
+            except Exception as e:
+                result["errors"].append({"cik": cik_clean, "message": str(e)})
+
+    except Exception as e:
+        logger.exception(f"Error processing CSV: {e}")
+        funds = fund_service.get_all_funds()
+        funds_with_latest = []
+        for fund in funds:
+            latest_doc = document_service.get_latest_document_for_fund(fund.id)
+            funds_with_latest.append({"fund": fund, "latest_document": latest_doc})
+
+        return templates.TemplateResponse("funds.html", {
+            "request": request,
+            "funds_with_latest": funds_with_latest,
+            "error": f"Error processing CSV file: {str(e)}",
+        })
+
+    # Re-fetch funds to show updated list
+    funds = fund_service.get_all_funds()
+    funds_with_latest = []
+    for fund in funds:
+        latest_doc = document_service.get_latest_document_for_fund(fund.id)
+        funds_with_latest.append({"fund": fund, "latest_document": latest_doc})
+
+    return templates.TemplateResponse("funds.html", {
+        "request": request,
+        "funds_with_latest": funds_with_latest,
+        "bulk_result": result,
+    })
 
 
 @router.post("/funds/{fund_id}/toggle")
