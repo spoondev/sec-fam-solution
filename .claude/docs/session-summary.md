@@ -35,6 +35,7 @@ Built a complete solution for retrieving SEC filings (N-CSR and N-CSRS forms) fr
 - Folder browser modal for selecting save location via file system navigation
 - Dynamic search/filter bars on dashboard, documents, and funds pages
 - Last Statement Filed and Type columns on the Funds management page
+- Bulk CSV upload for adding multiple funds at once
 
 ---
 
@@ -97,6 +98,7 @@ sec-fam-solution/
 |----------|--------|-------------|
 | `/` | GET | Dashboard |
 | `/funds` | GET/POST | Fund management |
+| `/funds/bulk` | POST | Bulk upload funds from CSV |
 | `/funds/{id}/toggle` | POST | Toggle fund active status |
 | `/funds/{id}/delete` | POST | Delete fund |
 | `/documents` | GET | Document history |
@@ -162,6 +164,8 @@ DEBUG=false
 5. **abda696** - Add search filter to documents page
 6. **e626070** - Add last statement and type columns to funds page
 7. **92bc2b5** - Add search filter to funds management page
+8. **c04dd43** - Update session summary and add CLAUDE.md
+9. **287826f** - Add bulk CSV upload for funds
 
 ---
 
@@ -231,3 +235,9 @@ python-dateutil>=2.8.2
   - Funds page: Filter by name, ticker, or CIK
 - Added "Last Statement Filed" and "Type" columns to the Monitored Funds table
 - All filters work client-side with real-time filtering as user types
+- Added bulk CSV upload feature for funds:
+  - Upload CSV with CIK column header
+  - Validates CIKs are numeric only
+  - Strips leading zeros for SEC API formatting
+  - Skips duplicates (existing funds and within CSV)
+  - Clear error reporting for invalid CIKs and other issues
